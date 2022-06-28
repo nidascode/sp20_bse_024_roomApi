@@ -3,15 +3,15 @@ package com.example.sp20_bse_024_roomapi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.room.Room;
 
-import android.annotation.SuppressLint;
+import android.database.sqlite.SQLiteConstraintException;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
         update.setEnabled(false);
         delete.setEnabled(false);
 
-        database = Room.databaseBuilder(this, AppDataBase.class, "User").fallbackToDestructiveMigration().build();
+        database = Room.databaseBuilder(this, AppDataBase.class, "users-db").build();
     }
     public void addData(View v){
         // Room API calls should be in a separate thread
@@ -42,13 +42,40 @@ public class MainActivity extends AppCompatActivity {
         executorService.execute(new Runnable() {
             @Override
             public void run() {
+                if(mail.getText().toString().equals("")) return;
+
                 User user = new User();
                 user.name = user_name.getText().toString();
                 user.email = mail.getText().toString();
                 user.address = address.getText().toString();
                 user.marital_status = radioButton.getCheckedRadioButtonId();
                 UserDao userDao = database.userDao();
-                userDao.insertOne(user);
+
+                try {
+                    userDao.insertOne(user);
+                    v.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "User data added successfully", Toast.LENGTH_SHORT).show();
+                            update.setEnabled(false);
+                            delete.setEnabled(false);
+                            reset();
+                        }
+                    });
+                } catch (SQLiteConstraintException e) {
+                    v.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(Objects.requireNonNull(e.getMessage()).contains("code 1555 SQLITE_CONSTRAINT_PRIMARYKEY")) {
+                                Toast.makeText(MainActivity.this, "already exist, add unique user", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(MainActivity.this, "Some Error", Toast.LENGTH_SHORT).show();
+                            }
+                            update.setEnabled(false);
+                            delete.setEnabled(false);
+                        }
+                    });
+                }
             }
         });
     }
@@ -60,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 UserDao userDao = database.userDao();
-                User user = userDao.findByName(user_name.getText().toString());
+                User user = userDao.findByEmail(mail.getText().toString());
                 if(user != null) {
                     v.post(new Runnable() {
                         @Override
@@ -94,12 +121,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 UserDao userDao = database.userDao();
-                User user = userDao.findByName(user_name.getText().toString());
-
-                if(user == null) return;
+                User user = new User();
+                user.email = mail.getText().toString();
 
                 user.name = user_name.getText().toString();
-                user.email = mail.getText().toString();
                 user.address = address.getText().toString();
                 user.marital_status = radioButton.getCheckedRadioButtonId();
 
@@ -108,7 +133,7 @@ public class MainActivity extends AppCompatActivity {
                 v.post(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(MainActivity.this, "User Updated!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "User Updated", Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -133,9 +158,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 UserDao userDao = database.userDao();
-                User user = userDao.findByName(user_name.getText().toString());
-
-                if(user == null) return;
+                User user = new User();
+                user.email = mail.getText().toString();
 
                 userDao.delete(user);
 

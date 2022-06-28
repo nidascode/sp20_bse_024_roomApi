@@ -6,13 +6,11 @@ import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Update;
 
-import java.util.List;
-
 @Dao
 public interface UserDao {
 
-    @Query("SELECT * FROM user WHERE username LIKE :name")
-    User findByName(String name);
+    @Query("SELECT * FROM user WHERE email LIKE :email")
+    User findByEmail(String email);
 
     @Insert
     void insertOne(User user);
